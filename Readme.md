@@ -86,6 +86,21 @@ terraform apply
 ✔ Applies Terraform with updated image
 ✔ Creates new ECS task revision automatically
 ---
+## 📊 Monitoring & Logging
+
+✅ CloudWatch Logs
+A CloudWatch Log Group is created:
+/ecs/strapi-app
+The ECS Task Definition uses the awslogs driver to stream container logs automatically.
+✅ ECS Metrics Collected
+CPU Utilization
+Memory Utilization
+Running Task Count
+Network In / Network Out
+These metrics are available in:
+CloudWatch → Metrics → ECS
+
+---
 
 # Required GitHub Secrets
 
@@ -96,10 +111,10 @@ AWS_SECRET_ACCESS_KEY
 
 ## 📌 Conclusion
 
-This project demonstrates production-level DevOps practices by combining:
-
-Containerization
-Cloud-native deployment
-Infrastructure as Code
-CI/CD automation
-Immutable deployments
+This project demonstrates production-level DevOps practices including:
+Containerization using Docker
+Serverless container orchestration with ECS Fargate
+Infrastructure as Code using Terraform
+Automated CI/CD with GitHub Actions
+Centralized logging and monitoring with CloudWatch
+Immutable deployment strategy
