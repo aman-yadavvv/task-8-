@@ -3,6 +3,25 @@ provider "aws" {
 }
 
 #####################################
+# Get Default VPC
+#####################################
+
+data "aws_vpc" "default" {
+  default = true
+}
+
+#####################################
+# Get Default Subnets
+#####################################
+
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
+#####################################
 # ECS Cluster
 #####################################
 
@@ -11,12 +30,21 @@ resource "aws_ecs_cluster" "ecs" {
 }
 
 #####################################
-# SECURITY GROUP in same VPC
+# CloudWatch Log Group
+#####################################
+
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/${var.app_name}"
+  retention_in_days = 7
+}
+
+#####################################
+# Security Group
 #####################################
 
 resource "aws_security_group" "ecs_sg" {
   name   = "${var.app_name}-sg"
-  vpc_id = var.vpc_id
+  vpc_id = data.aws_vpc.default.id
 
   ingress {
     from_port   = var.container_port
@@ -44,7 +72,8 @@ resource "aws_ecs_task_definition" "task" {
   cpu                      = "512"
   memory                   = "1024"
 
-  execution_role_arn = var.execution_role_arn
+  # Using same role for execution + task
+  execution_role_arn = var.task_role_arn
   task_role_arn      = var.task_role_arn
 
   container_definitions = jsonencode([
@@ -52,17 +81,29 @@ resource "aws_ecs_task_definition" "task" {
       name      = var.app_name
       image     = var.image_url
       essential = true
+
       portMappings = [
         {
           containerPort = var.container_port
+          hostPort      = var.container_port
+          protocol      = "tcp"
         }
       ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs_logs.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
     }
   ])
 }
 
 #####################################
-# ECS Service (Fargate)
+# ECS Service
 #####################################
 
 resource "aws_ecs_service" "service" {
@@ -72,9 +113,18 @@ resource "aws_ecs_service" "service" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
+  force_new_deployment = true
+
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent         = 200
+
   network_configuration {
-    subnets          = var.subnets
+    subnets          = data.aws_subnets.default.ids
     security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = true
   }
+
+  depends_on = [
+    aws_cloudwatch_log_group.ecs_logs
+  ]
 }

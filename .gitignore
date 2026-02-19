@@ -1,5 +1,14 @@
+# Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
 crash.log
-*.tfvars
+
+# Node
+node_modules/
+
+# Env
+.env
+
+# Mac
+.DS_Store
